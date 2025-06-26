@@ -32,8 +32,15 @@ function getRandomPokemonIds(count, max = MAX_POKEDEX) {
     return Array.from(ids);
 }
 
+function shuffleArray(arr) {
+    return [...arr].sort(() => Math.random() - 0.5);
+}
+
 const MemoryGame = () => {
     const [pokemonCards, setPokemonCards] = useState([]);
+    const [clickedIds, setClickedIds] = useState([]);
+    const [score, setScore] = useState(0);
+    const [highScore, setHighScore] = useState(0);
     const [loading, setLoading] = useState(true);
 
     const fetchRandomPokemon = async () => {
@@ -49,15 +56,19 @@ const MemoryGame = () => {
 
             const results = await Promise.all(promises);
             const pokemonData = results.map((pokemon) => {
-                const name = pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1);
-                const type1 = pokemon.types[0]?.type.name || "normal"
-                const type2 = pokemon.types[1] !== undefined && `${pokemon.types[1].type.name}`
+                const name =
+                    pokemon.species.name.charAt(0).toUpperCase() +
+                    pokemon.species.name.slice(1);
+                const type1 = pokemon.types[0]?.type.name || "normal";
+                const type2 =
+                    pokemon.types[1] !== undefined &&
+                    `${pokemon.types[1].type.name}`;
                 return {
                     id: pokemon.id,
                     name,
                     image: pokemon.sprites.front_default,
                     type1,
-                    type2
+                    type2,
                 };
             });
 
@@ -73,20 +84,55 @@ const MemoryGame = () => {
         fetchRandomPokemon();
     }, []);
 
+    const handleCardClick = (id) => {
+        if (clickedIds.includes(id)) {
+            // Incorrect click — reset game
+            setClickedIds([]);
+            setScore(0);
+            fetchRandomPokemon();
+        } else {
+            // Correct click
+            const newScore = score + 1;
+            setClickedIds([...clickedIds, id]);
+            setScore(newScore);
+            if (newScore > highScore) {
+                setHighScore(newScore);
+            }
+            if (newScore === NUM_CARDS) {
+                alert("You win!");
+                setClickedIds([]);
+                setScore(0);
+                fetchRandomPokemon();
+            } else {
+                // Shuffle cards if not yet won
+                setPokemonCards(shuffleArray(pokemonCards));
+            }
+        }
+    };
+
     return (
         <div>
-            <h1>Pokémon Memory Game</h1>
+            <h1 style={{ textAlign: "center" }}>Pokémon Memory Game</h1>
+            <p style={{ textAlign: "center" }}>
+                Score: {score} | High Score: {highScore}
+            </p>
             {loading ? (
-                <p>Loading...</p>
+                <p style={{ textAlign: "center" }}>Loading...</p>
             ) : (
                 <div
                     className="card-grid"
-                    style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "1rem" }}
+                    style={{
+                        display: "flex",
+                        justifyContent: "center",
+                        flexWrap: "wrap",
+                        gap: "1rem",
+                    }}
                 >
                     {pokemonCards.map((p) => (
                         <div
                             key={p.id}
                             className="card"
+                            onClick={() => handleCardClick(p.id)}
                             style={{
                                 backgroundColor: typeColors[p.type1] || "#AAA",
                                 borderRadius: "10px",
@@ -94,6 +140,8 @@ const MemoryGame = () => {
                                 width: "120px",
                                 textAlign: "center",
                                 color: "white",
+                                cursor: "pointer",
+                                userSelect: "none",
                             }}
                         >
                             <img
@@ -102,7 +150,11 @@ const MemoryGame = () => {
                                 style={{ width: "120px", height: "120px" }}
                             />
                             <p>{p.name}</p>
-                            <small>{(p.type2 !== false ? `${p.type1}/${p.type2}` : `${p.type1}`)}</small>
+                            <small>
+                                {p.type2 !== false
+                                    ? `${p.type1}/${p.type2}`
+                                    : `${p.type1}`}
+                            </small>
                         </div>
                     ))}
                 </div>
